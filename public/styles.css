@@ -1,0 +1,50 @@
+* {
+	font-family: sans-serif;
+}
+
+.builds {
+	margin-top: 20px;
+	padding: 0;
+	list-style-type: none;
+	border: 1px solid #333;
+}
+
+.builds__item {
+	padding: 5px;
+	background: #f3f3f3;
+	border-bottom: 1px solid #333;
+}
+
+.builds__item:last-child {
+	border-bottom: none;
+}
+
+.form {
+	border: 1px solid #333;
+	padding: 5px;
+}
+
+.form__field {
+	margin-bottom: 5px;
+}
+
+.form__label {
+	display: block;
+}
+
+.form__submit {
+	font-size: 16px;
+}
+
+.form__message {
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.form__message_type_error {
+	color: red;
+}
+
+.form__message_type_success {
+    color: green;
+}

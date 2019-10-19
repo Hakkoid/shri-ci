@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+html(lang="en")
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport" content="width=device-width, initial-scale=1.0")
+        meta(http-equiv="X-UA-Compatible" content="ie=edge")
+        link(rel="stylesheet" href="/styles.css")
+        title Continuous integration
+    body
+        h2 Make new build
+
+        form(action="/" method='POST' class='form')
+            div(class='form__field')
+                label(for="commitHash" class='form__label') commit hash
+                input(type="text" name='commitHash' id='commitHash' class='form__input')
+
+            div(class='form__field')
+                label(for="command" class='form__label') build command
+                input(type="text" name='command' id='command' class='form__input')
+
+            input(type="submit" id='submit' value='send' class='form__submit')
+
+            if message
+                div(class=`form__message form__message_type_${message.type}`)= message.text
+
+        if builds.length
+            h2 Builds
+            ul(class='builds')
+                each item in builds
+                    li(class='builds__item')
+                        a(href=`build/${item.id}`)
+                            b id: 
+                            = item.id + ', '
+                        b status: 
+                        = item.status + ', '
+                        b commit hash: 
+                        = item.commitHash
+
