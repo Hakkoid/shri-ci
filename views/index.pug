@@ -9,7 +9,7 @@ html(lang="en")
     body
         h2 Make new build
 
-        form(action="/" method='POST' class='form')
+        form(action="/build" method='POST' class='form')
             div(class='form__field')
                 label(for="commitHash" class='form__label') commit hash
                 input(type="text" name='commitHash' id='commitHash' class='form__input')

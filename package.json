@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "agent": "node ./agent-example/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -15,6 +16,7 @@
     "ejs": "^2.7.1",
     "express": "^4.17.1",
     "express-formidable": "^1.2.0",
-    "pug": "^2.0.4"
+    "pug": "^2.0.4",
+    "rimraf": "^3.0.0"
   }
 }

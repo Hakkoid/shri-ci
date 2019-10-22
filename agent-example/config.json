@@ -1,0 +1,6 @@
+{
+    "port": "3010",
+    "host": "http://localhost",
+    "maxConnectTries": 5,
+    "pathToRepositories": "./reps"
+}

@@ -2,20 +2,19 @@ const express = require('express')
 const path = require('path')
 const bodyParser = require('body-parser')
 const formidableMiddleware = require('express-formidable')
+const axios = require('axios')
 const Builds = require('./builds')
 const Agents = require('./agents')
+const config = require('./config')
 
 const app = express()
 
-
+app.use(express.json());
 app.use(bodyParser.json())
-app.use(formidableMiddleware())
 app.use(express.static(path.join(__dirname, 'public')))
 
 const agents = new Agents()
 const builds = new Builds()
-
-const repository = 'https://github.com/substack/minimist.git'
 
 app.engine('pug', require('pug').renderFile)
 
@@ -25,7 +24,26 @@ app.get('/', (req, res) => {
     })
 })
 
-app.post('/', (req, res) => {
+app.post('/notify_agent', (req, res) => {
+    const { 
+        host,
+        port
+    } = req.body
+
+    agents.registry({
+        host,
+        port
+    })
+
+    res.status(200)
+
+    res.json({
+        message: 'success registry',
+        successful: true
+    })
+})
+
+app.post('/build', formidableMiddleware(), (req, res) => {
     const {
         command,
         commitHash
@@ -35,7 +53,6 @@ app.post('/', (req, res) => {
         type: 'default',
         text: ''
     }
-
 
     if (!command || !commitHash) {
         message = {
@@ -52,7 +69,7 @@ app.post('/', (req, res) => {
             id: build.id,
             command,
             commitHash,
-            repository
+            repository: config.repository
         })
 
         message = {
@@ -83,4 +100,4 @@ app.get('/build/:id', (req, res, next) => {
     })
 })
 
-app.listen(3000, () => console.log(`Example app listening on port 3000!`))
+app.listen(config.port, () => console.log(`Server listening on port ${config.port}!`))
