@@ -2,5 +2,7 @@
     "port": "3010",
     "host": "http://localhost",
     "maxConnectTries": 5,
-    "pathToRepositories": "./reps"
+    "pathToRepositories": "./reps",
+    "maxRunBuilds": 5,
+    "maxTriesToSendBuild": 5
 }

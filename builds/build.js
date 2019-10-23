@@ -48,7 +48,7 @@ class Build {
         this.status = statuses.successful
     }
 
-    reject({ startDate, endDate, stdout, stderr, code }) {
+    reject({ startDate, endDate, stdout, stderr, code } = {}) {
         if (this.status !== statuses.pending) return
 
 

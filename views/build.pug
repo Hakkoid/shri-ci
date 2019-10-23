@@ -20,10 +20,10 @@ html(lang="en")
                 = build.status
             li
                 b= 'start date: '
-                = new Date(build.startDate)
+                = build.startDate ? new Date(build.startDate) : ''
             li
                 b= 'end date: '
-                = new Date(build.endDate)
+                = build.endDate ? new Date(build.endDate) : ''
             li
                 b= 'stdout: '
                 = build.stdout

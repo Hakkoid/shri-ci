@@ -2,7 +2,6 @@ const express = require('express')
 const path = require('path')
 const bodyParser = require('body-parser')
 const formidableMiddleware = require('express-formidable')
-const axios = require('axios')
 const Builds = require('./builds')
 const Agents = require('./agents')
 const config = require('./config')
@@ -33,13 +32,20 @@ app.post('/notify_agent', (req, res) => {
     agents.registry({
         host,
         port
-    })
+    }).then(() => {
+        res.status(200)
 
-    res.status(200)
+        res.json({
+            message: 'success registry',
+            successful: true
+        })
+    },() => {
+        res.status(500)
 
-    res.json({
-        message: 'success registry',
-        successful: true
+        res.json({
+            message: 'fail registry',
+            successful: false
+        })
     })
 })
 
@@ -70,12 +76,29 @@ app.post('/build', formidableMiddleware(), (req, res) => {
             command,
             commitHash,
             repository: config.repository
+        }).then(() => {
+            res.render('index.pug', {
+                builds: builds.getAll(),
+                message: {
+                    text: 'build started',
+                    type: 'success'
+                }
+            })
+
+            setTimeout(() => { build.reject() }, config.maxTimeWaitForBuild)
+        }, e => {
+            build.reject()
+
+            res.render('index.pug', {
+                builds: builds.getAll(),
+                message: {
+                    text: 'there is no way to make a build right now, please try again later',
+                    type: 'error'
+                }
+            })
         })
 
-        message = {
-            text: 'build started',
-            type: 'success'
-        }
+        return
     }
 
     res.render('index.pug', {
@@ -88,11 +111,12 @@ app.post('/notify_build_result', (req, res) => {
     const {
         host,
         port,
-        id
+        id,
+        free
     } = req.body
-    console.log(req.body)
+
     const agent = agents.find(item => item.host === host && item.port === port)
-    if (agent) agent.free = true
+    if (agent && free) agent.free = true
 
     builds.finishBuild(id, req.body)
 

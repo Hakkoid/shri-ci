@@ -10,7 +10,8 @@ const {
     port,
     host,
     maxConnectTries,
-    pathToRepositories
+    pathToRepositories,
+    maxRunBuilds
 } = require('./config.json')
 
 const repsPath = resolve(__dirname, pathToRepositories)
@@ -37,72 +38,106 @@ let countConnects = 0
         host
     }
 
-    axios.post('http://localhost:3000/notify_agent', data, {}).then(e => {
-
-    }, () => {
+    const connecting = () => {
         if (countConnects < maxConnectTries) {
-            setTimeout(connectToServer, 1000)
+            setTimeout(connectToServer, 1000 * countConnects)
         } else {
             process.exit(1)
         }
-    })
-})();
-
-let repositoryCount = 0
-app.post('/build', (req, res) => {
-    const {
-        repository,
-        command,
-        commitHash,
-        id
-    } = req.body
-
-    const repositoryFolder = `repository${repositoryCount++}`
-
-    res.status(200)
-    res.json({
-        message: 'build was start',
-        successful: true
-    })
-
-    let startDate = null,
-        endDate = null
-
-    const request = (data) => {
-        endDate = Date.now()
-
-        return axios.post('http://localhost:3000/notify_build_result',{
-            ...data,
-            startDate,
-            endDate,
-            id,
-            host,
-            port
-        }, {})
     }
 
-    git.clone(repository, { folder: repositoryFolder })
-        .then(() => {
-            return git.checkout(repositoryFolder, commitHash)
-        }).then(() => {
-            startDate = Date.now()
-            return runCommand(command, resolve(repsPath, repositoryFolder))
-        }).then(request, request)
-        .then(() => {
-            const path = resolve(repsPath, repositoryFolder)
-            rimraf(path, (err) => {
-                if(!err){
-                    console.log(`${path} repository is removed`)
-                } else {
-                    console.log(`removal of the ${path} repository failed`)
-                }
+    axios.post('http://localhost:3000/notify_agent', data, {}).then(e => {
+        if(e.status !== 200) {
+            connecting()
+            throw new Error('failed to register on server, try again')
+        }
+    }, connecting).then(start)
+})();
+
+function start() {
+    let buildsLength = 0
+    let repositoryCount = 0
+    app.post('/build', (req, res) => {
+        const {
+            repository,
+            command,
+            commitHash,
+            id
+        } = req.body
+
+        const repositoryFolder = `repository${repositoryCount++}`
+
+        if(maxRunBuilds <= buildsLength) {
+            res.status(500)
+            res.json({
+                message: 'build was start',
+                successful: false,
+                free: false
             })
-        }).catch(console.log)
-})
+            return
+        }
 
-app.get('/ping', (req, res) => {
-    res.status(200)
-    res.send('pong')
-})
+        buildsLength++
 
-app.listen(port, () => console.log(`Agent listening on port ${port}!`))
+        res.status(200)
+        res.json({
+            message: 'build was start',
+            successful: true,
+            free: true
+        })
+
+        let startDate = null,
+            endDate = null
+
+        const request = (data) => {
+            endDate = Date.now()
+
+            buildsLength--
+
+            let tries = 0;
+
+            const send = () => {
+                return axios.post('http://localhost:3000/notify_build_result',{
+                    ...data,
+                    startDate,
+                    endDate,
+                    id,
+                    host,
+                    port,
+                    free: true
+                }, {}).catch(() => {
+                    if(tries < maxTriesToSendBuild){
+                        setTimeout(send, 2000 * ++tries)
+                    }
+                })
+            }
+
+            return send()
+        }
+
+        git.clone(repository, { folder: repositoryFolder })
+            .then(() => {
+                return git.checkout(repositoryFolder, commitHash)
+            }).then(() => {
+                startDate = Date.now()
+                return runCommand(command, resolve(repsPath, repositoryFolder))
+            }).then(request, request)
+            .then(() => {
+                const path = resolve(repsPath, repositoryFolder)
+                rimraf(path, (err) => {
+                    if(!err){
+                        console.log(`${path} repository is removed`)
+                    } else {
+                        console.log(`removal of the ${path} repository failed`)
+                    }
+                })
+            }).catch(console.log)
+    })
+
+    app.get('/ping', (req, res) => {
+        res.status(200)
+        res.send('pong')
+    })
+
+    app.listen(port, () => console.log(`Agent listening on port ${port}!`))
+}

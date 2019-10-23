@@ -7,6 +7,22 @@ class Agents {
     }
 
     registry({ host, port }) {
+        const agent = this._entries.find(item => host === item.host && item.port === port)
+        if(agent) {
+            return axios.post(`${agent.host}:${agent.port}/ping`).then(() => {
+                throw new Error('port and host are already reserved')
+            }, () => {
+                this.add({ host, port })
+                return 'agent is registered'
+            })
+        }
+
+        this.add({ host, port })
+
+        return new Promise(res => res('agent is registered'))
+    }
+
+    add({ host, port }) {
         this._entries.push({
             id: this._counterId++,
             host,
@@ -24,11 +40,11 @@ class Agents {
     }
 
     pinging(agent) {
-        const timer = setInterval(() => {
+        agent.timer = setInterval(() => {
 
-            axios.get(`${agent.host}:${agent.port}/ping`)
+            axios.post(`${agent.host}:${agent.port}/ping`)
                 .catch(() => {
-                    clearInterval(timer)
+                    clearInterval(agent.timer)
                     this.utilize(agent)
                 })
         }, 10 * 60 * 1000);
@@ -36,7 +52,8 @@ class Agents {
 
     utilize(agent) {
         const index = this._entries.findIndex(item => item.id === agent.id)
-                    
+
+        clearTimeout(agent.timer)
         if (index >= 0) {
             this._entries = [
                 ...this._entries.slice(0, index),
@@ -46,20 +63,32 @@ class Agents {
         }
     }
 
-    build({ id, command, repository, commitHash }) {
+    build({ id, command, repository, commitHash }, tries = 0) {
         const agent = this._entries.find(item => item.free)
+        const data = { id, command, repository, commitHash }
 
         if (agent) {
-            agent.free = false
 
-            return axios.post(`${agent.host}:${agent.port}/build`, {
-                id,
-                command,
-                commitHash,
-                repository
-            }).catch(() => {
-                this.utilize(agent)
-            })
+            return axios.post(`${agent.host}:${agent.port}/build`, data)
+                .then(e => {
+
+                    if (e.status !== 200) {
+                        if (e.data.free === false) {
+                            agent.free = false
+                        } else {
+                            throw(new Error('agent don\'t works'))
+                        }
+                    }
+                })
+                .catch(() => {
+                    this.utilize(agent)
+
+                    if (tries < 5) {
+                        this.build(data, tries)
+                    } else {
+                        throw(new Error('send task to agent is failed'))
+                    }
+                })
         } else {
             return new Promise((resolve, reject) => {
                 reject('no free agents now')
