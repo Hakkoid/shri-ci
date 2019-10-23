@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "agent": "node ./agent-example/index.js",
+    "agent": "mkdir ./agent-example/reps && node ./agent-example/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
