@@ -1,8 +1,8 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const axios = require('axios')
-const path = require('path')
-const Git = require('git')
+const { resolve } = require('path')
+const Git = require('./git')
 const rimraf  = require('rimraf')
 const { runCommand } = require('./command')
 
@@ -13,10 +13,20 @@ const {
     pathToRepositories
 } = require('./config.json')
 
-const git = new Git(pathToRepositories)
+const repsPath = resolve(__dirname, pathToRepositories)
+
+const git = new Git(repsPath)
 const app = express()
 
 app.use(bodyParser.json())
+
+rimraf(resolve(repsPath, './**/*'), (err) => {
+    if(!err){
+        console.log(`${repsPath} folder is cleared`)
+    } else {
+        console.log(`cleared of the ${repsPath} folder failed`)
+    }
+})
 
 let countConnects = 0
 ;(function connectToServer() {
@@ -38,58 +48,61 @@ let countConnects = 0
     })
 })();
 
-rimraf(resolve(pathToRepositories, './**'), (err) => {
-    if(!err){
-        console.log(`${resolve(pathToRepositories, repositoryFolder)} repository is removed`)
-    } else {
-        console.log(`removal of the ${resolve(pathToRepositories, repositoryFolder)} repository failed`)
-    }
-})
-
-
 let repositoryCount = 0
 app.post('/build', (req, res) => {
     const {
         repository,
         command,
-        commitHash
+        commitHash,
+        id
     } = req.body
 
     const repositoryFolder = `repository${repositoryCount++}`
 
+    res.status(200)
+    res.json({
+        message: 'build was start',
+        successful: true
+    })
+
+    let startDate = null,
+        endDate = null
+
+    const request = (data) => {
+        endDate = Date.now()
+
+        return axios.post('http://localhost:3000/notify_build_result',{
+            ...data,
+            startDate,
+            endDate,
+            id,
+            host,
+            port
+        }, {})
+    }
+
     git.clone(repository, { folder: repositoryFolder })
         .then(() => {
-            return git.checkout(commitHash, {
-                cwd: path.resolve(
-                    pathToRepositories,
-                    repositoryFolder
-                )
-            })
+            return git.checkout(repositoryFolder, commitHash)
         }).then(() => {
-            return runCommand(command, resolve(pathToRepositories, repositoryFolder))
-        }).then(data => {
-            res.status(200)
-            res.json({
-                ...data,
-                commitHash,
-                repository
-            })
-        }, data => {
-            res.status(500)
-            res.json({
-                ...data,
-                commitHash,
-                repository
-            })
-        }).then(() => {
-            rimraf(resolve(pathToRepositories, repositoryFolder), (err) => {
+            startDate = Date.now()
+            return runCommand(command, resolve(repsPath, repositoryFolder))
+        }).then(request, request)
+        .then(() => {
+            const path = resolve(repsPath, repositoryFolder)
+            rimraf(path, (err) => {
                 if(!err){
-                    console.log(`${resolve(pathToRepositories, repositoryFolder)} repository is removed`)
+                    console.log(`${path} repository is removed`)
                 } else {
-                    console.log(`removal of the ${resolve(pathToRepositories, repositoryFolder)} repository failed`)
+                    console.log(`removal of the ${path} repository failed`)
                 }
             })
-        })
+        }).catch(console.log)
+})
+
+app.get('/ping', (req, res) => {
+    res.status(200)
+    res.send('pong')
 })
 
 app.listen(port, () => console.log(`Agent listening on port ${port}!`))

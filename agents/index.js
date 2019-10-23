@@ -1,36 +1,68 @@
 const axios = require('axios')
 
 class Agents {
-    constructor(opt = { maxTasksOnEntry: 10 }) {
+    constructor() {
         this._entries = []
-        this.maxTasksOnEntry = opt.maxTasksOnEntry
+        this._counterId = 0
     }
 
     registry({ host, port }) {
         this._entries.push({
+            id: this._counterId++,
             host,
             port,
-            tasks: 0
+            tasks: 0,
+            free: true
         })
+
+        const last = this._entries[this._entries.length - 1]
+        this.pinging(last)
     }
 
-    checkAbilityToBuild() {
-        return this._entries.find( item => item.tasks < this.maxTasksOnEntry)
+    find(cb) {
+        return this._entries.find(cb)
+    }
+
+    pinging(agent) {
+        const timer = setInterval(() => {
+
+            axios.get(`${agent.host}:${agent.port}/ping`)
+                .catch(() => {
+                    clearInterval(timer)
+                    this.utilize(agent)
+                })
+        }, 10 * 60 * 1000);
+    }
+
+    utilize(agent) {
+        const index = this._entries.findIndex(item => item.id === agent.id)
+                    
+        if (index >= 0) {
+            this._entries = [
+                ...this._entries.slice(0, index),
+                ...this._entries.slice(index + 1)
+            ]
+
+        }
     }
 
     build({ id, command, repository, commitHash }) {
-        const agent = this._entries.find( item => item.tasks < this.maxTasksOnEntry)
+        const agent = this._entries.find(item => item.free)
 
-        if(agent) {
-            axios.post(`${agent.host}:${agent.port}/build`, {
+        if (agent) {
+            agent.free = false
+
+            return axios.post(`${agent.host}:${agent.port}/build`, {
                 id,
                 command,
                 commitHash,
                 repository
-            }).then( data => {
-                console.log(data)
-            }, err => {
-                console.log(err)
+            }).catch(() => {
+                this.utilize(agent)
+            })
+        } else {
+            return new Promise((resolve, reject) => {
+                reject('no free agents now')
             })
         }
     }

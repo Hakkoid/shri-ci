@@ -12,7 +12,7 @@ module.exports = class Builds {
     }
 
     get(id) {
-        return this._entries.find(item => item.id.toString() === id)
+        return this._entries.find(item => item.id === parseInt(id))
     }
 
     makeBuild({ commitHash, command }) {
@@ -37,15 +37,15 @@ module.exports = class Builds {
         build.update({ startDate, endDate })
     }
 
-    finishBuild(id, { successful, startDate, endDate }) {
+    finishBuild(id, data) {
         const build = this.get(id)
 
         if (!build) return
 
-        if (successful) {
-            build.resolve({ startDate, endDate, output })
+        if (data.code === 0) {
+            build.resolve(data)
         } else {
-            build.reject({ startDate, endDate, output })
+            build.reject(data)
         }
     }
 }

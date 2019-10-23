@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 })
 
 app.post('/notify_agent', (req, res) => {
-    const { 
+    const {
         host,
         port
     } = req.body
@@ -59,7 +59,7 @@ app.post('/build', formidableMiddleware(), (req, res) => {
             text: 'please fill all fields',
             type: 'error'
         }
-    } else if(agents.checkAbilityToBuild()){
+    } else {
         const build = builds.makeBuild({
             command,
             commitHash
@@ -76,11 +76,6 @@ app.post('/build', formidableMiddleware(), (req, res) => {
             text: 'build started',
             type: 'success'
         }
-    } else {
-        message = {
-            type: 'error',
-            text: 'making new builds is not available now, try later'
-        }
     }
 
     res.render('index.pug', {
@@ -89,11 +84,31 @@ app.post('/build', formidableMiddleware(), (req, res) => {
     })
 })
 
+app.post('/notify_build_result', (req, res) => {
+    const {
+        host,
+        port,
+        id
+    } = req.body
+    console.log(req.body)
+    const agent = agents.find(item => item.host === host && item.port === port)
+    if (agent) agent.free = true
+
+    builds.finishBuild(id, req.body)
+
+    res.status(200)
+    res.json({
+        message: "build saved",
+        successful: true
+    })
+})
+
+
 app.get('/build/:id', (req, res, next) => {
     const id = req.params.id
     const build = builds.get(id)
 
-    if(!build) return next()
+    if (!build) return next()
 
     res.render('build.pug', {
         build

@@ -1,8 +1,9 @@
 const { spawn } = require('child_process')
 const { withPromise } = require('./helpers')
+const { resolve } = require('path')
 
 module.exports = class Git {
-    constructor({ path }) {
+    constructor(path) {
         this.path = path
     }
 
@@ -19,7 +20,6 @@ module.exports = class Git {
 
         const params = ['clone', `${url}`]
         if (folder) params.push(folder)
-
         const cloneProcess = spawn('git', params, {
             cwd: path
         })
@@ -53,18 +53,20 @@ module.exports = class Git {
         })
 
         let timer = null
-            ; (function updateTimer(proc) {
-                clearTimeout(timer)
+        function updateTimer(proc) {
+            clearTimeout(timer)
 
-                setTimeout(() => {
-                    proc.kill()
+            timer = setTimeout(() => {
+                proc.kill()
 
-                    reject({
-                        stderr,
-                        stdout
-                    })
-                }, 5000)
-            })(cloneProcess);
+                reject({
+                    stderr,
+                    stdout
+                })
+            }, 10 * 60 * 1000)
+        }
+
+        updateTimer(cloneProcess)
 
         return promise
     }

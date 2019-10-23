@@ -7,5 +7,30 @@ html(lang="en")
         link(rel="stylesheet" href="/styles.css")
         title Continuous integration
     body
+        a(href="/")
+            h1 Home
+
         h2= `build #${build.id}`
+        ul
+            li
+                b= 'commit: '
+                = build.commitHash
+            li 
+                b= 'status: '
+                = build.status
+            li
+                b= 'start date: '
+                = new Date(build.startDate)
+            li
+                b= 'end date: '
+                = new Date(build.endDate)
+            li
+                b= 'stdout: '
+                = build.stdout
+            li
+                b= 'stderr: '
+                = build.stderr
+            li
+                b= 'exit code: '
+                = build.code
 
